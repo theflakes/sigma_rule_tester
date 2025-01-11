@@ -138,8 +138,8 @@ Usage:
     sigma_rule_tester --log './log.json' --rules './rules'
 
 Options:
-    -l, --log <location>    Path to the test log file
-    -r, --rules             Path to the directory containing your Sigma rules
+    -l, --log <location>    Test Json log
+    -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
 ";
     println!("{}", help);

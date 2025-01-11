@@ -11,7 +11,24 @@ Usage:
     sigma_rule_tester --log './log.json' --rules './rules'
 
 Options:
-    -l, --log <location>    Path to the test log file
-    -r, --rules             Path to the directory containing your Sigma rules
+    -l, --log <location>    Test Json log
+    -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
+```
+Output
+```
+# ./sigma_rule_tester -r "./rules/" -l "./log.json"
+Rule Load Summary:
+- Total: 1
+- Successful: 1
+- Failed: 0
+- Errors: []
+
+Results:
+{
+  "rule_count": 1,
+  "rules": [
+    "Example Sigma Rule"
+  ]
+}
 ```
