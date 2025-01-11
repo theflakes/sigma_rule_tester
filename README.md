@@ -19,16 +19,27 @@ Output
 ```
 # ./sigma_rule_tester -r "./rules/" -l "./log.json"
 Rule Load Summary:
-- Total: 1
-- Successful: 1
+- Total: 2989
+- Successful: 2989
 - Failed: 0
 - Errors: []
 
 Results:
 {
-  "rule_count": 1,
+  "rule_count": 12,
   "rules": [
-    "Example Sigma Rule"
+    "ALERT - ADS redirection used",
+    "ALERT - Sus Parent to Child commandline",
+    "Example Sigma Rule",
+    "Execution Of Non-Existing File",
+    "Field does not exist",
+    "Field exists",
+    "Obfuscation - ^",
+    "Potential Defense Evasion Via Raw Disk Access By Uncommon Tools",
+    "Publicly Accessible RDP Service",
+    "Regsvr32 Used",
+    "Scrobj possible exploit",
+    "URL in Command Line"
   ]
 }
 ```
