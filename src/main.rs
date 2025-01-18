@@ -28,7 +28,6 @@ fn apply_sigma_rules(log_entry: &Value, rules: &[Rule]) -> (Vec<MatchedRules>, D
 
     for rule in rules {
         let start = Instant::now();
-
         if rule.is_match(&event) {
             let duration = start.elapsed();
             matched_rules.push(MatchedRules {
@@ -38,7 +37,6 @@ fn apply_sigma_rules(log_entry: &Value, rules: &[Rule]) -> (Vec<MatchedRules>, D
             total_duration += duration;
         }
     }
-    // matched_rules.sort_by_key(|matched_rule| &matched_rule.name);
     return (matched_rules, total_duration);
 }
 
