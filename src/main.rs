@@ -74,7 +74,7 @@ fn load_rules(rules_dir: &str, print_errors: bool) -> Result<Vec<Rule>, String> 
                 Err(err) => {
                     failed += 1;
                     errors.push(format!(
-                        "Failed to parse YAML file {:?}: {:?}",
+                        "Failed to parse Sigma rule file {:?}: {:?}",
                         entry.path(),
                         err
                     ));
