@@ -211,6 +211,7 @@ Options:
     -e, --errors            Print out all Sigma rule loading errors
     -l, --log <location>    Test Json log
     -n, --number            Number of time to run the log through all rules
+    -p, --pretty            Pretty print output
     -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
 ";
