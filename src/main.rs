@@ -10,7 +10,6 @@ struct SigmaResults {
     rules: Vec<Value>,
 }
 
-#[inline(always)]
 fn apply_sigma_rules(log_entry: &Value, rules: &Vec<Rule>) -> Vec<Value> {
     let mut matched_rules = Vec::new();
     let event = event_from_json(&log_entry.to_string()).unwrap();
@@ -24,10 +23,36 @@ fn apply_sigma_rules(log_entry: &Value, rules: &Vec<Rule>) -> Vec<Value> {
     return matched_rules
 }
 
-fn load_rules(rules_dir: &str) -> Result<Vec<Rule>, String> {
+fn print_results(total: i32, successful: i32, failed: i32, errors: &Vec<String>, print_errors: bool) {
+    if print_errors {
+        println!(
+            "Rule Load Summary:\n\
+               - Total: {}\n\
+               - Successful: {}\n\
+               - Failed: {}\n\
+               - Errors: {:?}",
+            total,
+            successful,
+            failed,
+            errors,
+        );
+        return
+    }
+    println!(
+        "Rule Load Summary:\n\
+           - Total: {}\n\
+           - Successful: {}\n\
+           - Failed: {}",
+        total,
+        successful,
+        failed,
+    );
+}
+
+fn load_rules(rules_dir: &str, print_errors: bool) -> Result<Vec<Rule>, String> {
     let mut total = 0;
-    let mut num_successful = 0;
-    let mut num_failed = 0;
+    let mut successful = 0;
+    let mut failed = 0;
     let mut rules = vec![];
     let mut errors = vec![];
 
@@ -43,11 +68,11 @@ fn load_rules(rules_dir: &str) -> Result<Vec<Rule>, String> {
             let contents = read_file_to_string(entry.path())?;
             match rule_from_yaml(&contents) {
                 Ok(r) => {
-                    num_successful += 1;
+                    successful += 1;
                     rules.push(r);
                 }
                 Err(err) => {
-                    num_failed += 1;
+                    failed += 1;
                     errors.push(format!(
                         "Failed to parse YAML file {:?}: {:?}",
                         entry.path(),
@@ -57,21 +82,10 @@ fn load_rules(rules_dir: &str) -> Result<Vec<Rule>, String> {
             };
         }
     }
-    println!(
-        "Rule Load Summary:\n\
-           - Total: {}\n\
-           - Successful: {}\n\
-           - Failed: {}\n\
-           - Errors: {:?}",
-        total,
-        num_successful,
-        num_failed,
-        errors
-    );
+    print_results(total, successful, failed, &errors, print_errors);
     Ok(rules)
 }
 
-#[inline(always)]
 fn read_file_to_string(path: &std::path::Path) -> Result<String, String> {
     let mut file = std::fs::File::open(path)
         .map_err(|e| format!("Unable to open file {:?}: {}", path, e))?;
@@ -85,11 +99,12 @@ fn main() -> io::Result<()>  {
     let (
         log, 
         rules,
+        print_errors,
     ) = get_args()?;
     let file = std::fs::File::open(log).unwrap(); 
     let reader = std::io::BufReader::new(file); 
     let log = serde_json::from_reader(reader).unwrap();
-    let rules = load_rules(&rules).unwrap();
+    let rules = load_rules(&rules, print_errors).unwrap();
     let mut matched_rules = apply_sigma_rules(&log, &rules);
     matched_rules.sort_by(|a, b| { 
         a.as_str().unwrap_or("").cmp(&b.as_str().unwrap_or(""))
@@ -103,15 +118,17 @@ fn main() -> io::Result<()>  {
     Ok(())
 }
 
-fn get_args() -> io::Result<(String, String)> {
+fn get_args() -> io::Result<(String, String, bool)> {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 5 { print_help(); }
+    if args.len() < 5 { print_help(); }
     let mut log_path = String::new();
     let mut rules_path = String::new();
     let mut get_log = false;
     let mut get_rules = false;
+    let mut print_errors = false;
     for arg in args {
         match arg.as_str() {
+            "-e" | "--errors" => print_errors = true,
             "-l" | "--log" => get_log = true,
             "-r" | "--rules" => get_rules = true,
             _ => {
@@ -125,7 +142,7 @@ fn get_args() -> io::Result<(String, String)> {
             }
         }
     }
-    Ok((log_path, rules_path))
+    Ok((log_path, rules_path, print_errors))
 }
 
 fn print_help() {
@@ -138,6 +155,7 @@ Usage:
     sigma_rule_tester --log './log.json' --rules './rules'
 
 Options:
+    -e, --errors            Print out all Sigma rule loading errors
     -l, --log <location>    Test Json log
     -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
