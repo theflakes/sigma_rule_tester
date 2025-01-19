@@ -33,7 +33,7 @@ Output
     "total": 2989,
     "successful": 2989,
     "failed": 0,
-    "load_time_milli": 4465,
+    "load_time_milli": 207,
     "errors": []
   },
   "run_number": 1,
