@@ -116,7 +116,16 @@ fn apply_sigma_rules_timed(
             }
         }
 
-        print_results_timed(rule_loads, &matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched, print_errors);
+        print_results_timed(
+            rule_loads, 
+            &matched_rules, 
+            &unmatched_rules, 
+            total_duration,
+            i, 
+            pretty, 
+            print_unmatched, 
+            print_errors
+        );
     }
 }
 
@@ -187,7 +196,16 @@ fn apply_sigma_rules_untimed(
             }
         }
 
-        print_results_untimed(rule_loads, &matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched, print_errors);
+        print_results_untimed(
+            rule_loads, 
+            &matched_rules, 
+            &unmatched_rules, 
+            total_duration,
+            i, 
+            pretty, 
+            print_unmatched, 
+            print_errors
+        );
     }
 }
 
@@ -260,9 +278,25 @@ fn main() -> io::Result<()>  {
     let log = serde_json::from_reader(reader).unwrap();
     let (rules, rule_loads) = load_rules(&rules).unwrap();
     if timed {
-        apply_sigma_rules_timed(&rule_loads, &log, &rules, num_runs, pretty, print_unmatched, print_errors);
+        apply_sigma_rules_timed(
+            &rule_loads, 
+            &log, 
+            &rules, 
+            num_runs, 
+            pretty, 
+            print_unmatched, 
+            print_errors
+        );
     } else {
-        apply_sigma_rules_untimed(&rule_loads, &log, &rules, num_runs, pretty, print_unmatched, print_errors);
+        apply_sigma_rules_untimed(
+            &rule_loads, 
+            &log, 
+            &rules, 
+            num_runs, 
+            pretty, 
+            print_unmatched, 
+            print_errors
+        );
     }
     
     Ok(())
@@ -310,7 +344,17 @@ fn get_args() -> io::Result<(String, String, i64, bool, bool, bool, bool)> {
             }
         }
     }
-    Ok((log_path, rules_path, num_runs, print_errors, pretty, print_unmatched, timed))
+    Ok(
+        (
+            log_path, 
+            rules_path, 
+            num_runs, 
+            print_errors, 
+            pretty, 
+            print_unmatched, 
+            timed
+        )
+    )
 }
 
 fn print_help() {
