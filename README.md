@@ -27,7 +27,7 @@ Options:
 ```
 Output
 ```
-# ./sigma_rule_tester -r ./config/sigma_rules/ -l ./log.json -p -n 2
+# ./sigma_rule_tester -r ./config/sigma_rules/ -l ./log.json -p -n 2 --timed
 {
   "rule_load": {
     "total": 2989,
