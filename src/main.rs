@@ -242,7 +242,6 @@ fn load_rules(rules_dir: &str) -> Result<(Vec<Rule>, RuleLoads), String> {
         load_time_milli: duration.as_millis(),
         errors,
     };
-    // print_rule_load_results(total, successful, failed, &errors, print_errors, duration);
     Ok((rules, rule_loads))
 }
 
