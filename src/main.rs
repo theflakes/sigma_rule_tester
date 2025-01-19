@@ -6,7 +6,7 @@ use walkdir::WalkDir;
 
 
 #[derive(Debug, Default, Serialize, Clone)]
-struct MatchedRules {
+struct RuleResults {
     rule_title: String,
     time_taken_micro: u128,
 }
@@ -17,17 +17,27 @@ struct SigmaResults {
     time_taken_milli: u128,
     time_taken_micro: u128,
     matched_rule_count: usize,
-    matched_rules: Vec<MatchedRules>,
+    matched_rules: Vec<RuleResults>,
+    unmatched_rules: Vec<RuleResults>,
 }
 
 
-fn print_results(matched_rules: &Vec<MatchedRules>, total_duration: Duration, run_number: i64, pretty: bool) {
+fn print_results(
+                    matched_rules: &Vec<RuleResults>, 
+                    unmatched_rules: &Vec<RuleResults>, 
+                    total_duration: Duration, 
+                    run_number: i64, 
+                    pretty: bool,
+                    print_unmatched: bool,
+                ) 
+{
     let mut sigma_results = SigmaResults {
         run_number: run_number + 1,
         time_taken_milli: total_duration.as_millis(),
         time_taken_micro: total_duration.as_micros(),
         matched_rule_count: matched_rules.len(),
         matched_rules: matched_rules.clone(),
+        unmatched_rules: if print_unmatched { unmatched_rules.clone() } else { Vec::new() }
     };
     sigma_results.matched_rules.sort_by_key(|rule| rule.rule_title.clone());
     let mut _results: String = String::new();
@@ -39,19 +49,33 @@ fn print_results(matched_rules: &Vec<MatchedRules>, total_duration: Duration, ru
     println!("{}", _results);
 }
 
-fn apply_sigma_rules(log_entry: &Value, rules: &[Rule], num_runs: i64, pretty: bool) {
+fn apply_sigma_rules(
+                        log_entry: &Value, 
+                        rules: &[Rule], 
+                        num_runs: i64, 
+                        pretty: bool, 
+                        print_unmatched: bool
+                    ) 
+{
     let event = event_from_json(&log_entry.to_string()).unwrap();
     
     for i in 0..num_runs {
         // Clear matched_rules at the start of each run
         let mut matched_rules = Vec::new();
-        
+        let mut unmatched_rules = Vec::new();
         let mut total_duration = Duration::new(0, 0);
         for rule in rules {
             let start = Instant::now();
             if rule.is_match(&event) {
                 let duration = start.elapsed();
-                matched_rules.push(MatchedRules {
+                matched_rules.push(RuleResults {
+                    rule_title: rule.title.clone(),
+                    time_taken_micro: duration.as_micros(),
+                });
+                total_duration += duration;
+            } else {
+                let duration = start.elapsed();
+                unmatched_rules.push(RuleResults {
                     rule_title: rule.title.clone(),
                     time_taken_micro: duration.as_micros(),
                 });
@@ -59,11 +83,19 @@ fn apply_sigma_rules(log_entry: &Value, rules: &[Rule], num_runs: i64, pretty: b
             }
         }
 
-        print_results(&matched_rules, total_duration,i, pretty);
+        print_results(&matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched);
     }
 }
 
-fn print_rule_load_results(total: i32, successful: i32, failed: i32, errors: &Vec<String>, print_errors: bool, duration: Duration) {
+fn print_rule_load_results(
+                            total: i32, 
+                            successful: i32, 
+                            failed: i32, 
+                            errors: &Vec<String>, 
+                            print_errors: bool, 
+                            duration: Duration
+                        ) 
+{
     if print_errors {
         println!(
             "Rule Load Summary:\n\
@@ -148,16 +180,17 @@ fn main() -> io::Result<()>  {
         num_runs,
         print_errors,
         pretty,
+        print_unmatched,
     ) = get_args()?;
     let file = std::fs::File::open(log).unwrap(); 
     let reader = std::io::BufReader::new(file); 
     let log = serde_json::from_reader(reader).unwrap();
     let rules = load_rules(&rules, print_errors).unwrap();
-    apply_sigma_rules(&log, &rules, num_runs, pretty);
+    apply_sigma_rules(&log, &rules, num_runs, pretty, print_unmatched);
     Ok(())
 }
 
-fn get_args() -> io::Result<(String, String, i64, bool, bool)> {
+fn get_args() -> io::Result<(String, String, i64, bool, bool, bool)> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 5 { print_help(); }
     let mut log_path = String::new();
@@ -168,12 +201,14 @@ fn get_args() -> io::Result<(String, String, i64, bool, bool)> {
     let mut num_runs = 1;
     let mut get_num_runs = false;
     let mut pretty = false;
+    let mut print_unmatched = false;
     for arg in args {
         match arg.as_str() {
             "-e" | "--errors" => print_errors = true,
             "-l" | "--log" => get_log = true,
             "-n" | "--number" => get_num_runs = true,
             "-p" | "--pretty" => pretty = true,
+            "-u" | "--unmatched" => print_unmatched = true,
             "-r" | "--rules" => get_rules = true,
             _ => {
                 if get_log {
@@ -195,7 +230,7 @@ fn get_args() -> io::Result<(String, String, i64, bool, bool)> {
             }
         }
     }
-    Ok((log_path, rules_path, num_runs, print_errors, pretty))
+    Ok((log_path, rules_path, num_runs, print_errors, pretty, print_unmatched))
 }
 
 fn print_help() {
@@ -203,6 +238,11 @@ fn print_help() {
 Authors: Brian Kellogg
 License: MIT
 Purpose: Test Sigma rules against a Json log.
+
+Note: 
+    When a rule uses simple glob matching, '*' and '?', the first time this
+    logic is encountered it is converted into a regex and cached for quicker
+    execution of that logic on subsequent runs.
 
 Usage: 
     sigma_rule_tester --log './log.json' --rules './rules'
@@ -214,6 +254,7 @@ Options:
     -p, --pretty            Pretty print output
     -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
+    -u, --unmatched         Include all unmatched rules in the output
 ";
     println!("{}", help);
     process::exit(1)

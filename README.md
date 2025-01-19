@@ -7,6 +7,11 @@ Authors: Brian Kellogg
 License: MIT
 Purpose: Test Sigma rules against a Json log.
 
+Note: 
+    When a rule uses simple glob matching, '*' and '?', the first time this
+    logic is encountered it is converted into a regex and cached for quicker
+    execution of that logic on subsequent runs.
+
 Usage: 
     sigma_rule_tester --log './log.json' --rules './rules'
 
@@ -17,6 +22,7 @@ Options:
     -p, --pretty            Pretty print output
     -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
+    -u, --unmatched         Include all unmatched rules in the output
 ```
 Output
 ```
