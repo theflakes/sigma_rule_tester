@@ -21,7 +21,7 @@ struct RuleLoads {
 }
 
 #[derive(Debug, Default, Serialize)]
-struct SigmaResults {
+struct SigmaResultsTimed {
     rule_load: RuleLoads,
     run_number: i64,
     time_taken_milli: u128,
@@ -31,8 +31,19 @@ struct SigmaResults {
     unmatched_rules: Vec<RuleResults>,
 }
 
+#[derive(Debug, Default, Serialize)]
+struct SigmaResultsUntimed {
+    rule_load: RuleLoads,
+    run_number: i64,
+    time_taken_milli: u128,
+    time_taken_micro: u128,
+    matched_rule_count: usize,
+    matched_rules: Vec<String>,
+    unmatched_rules: Vec<String>,
+}
 
-fn print_results(
+
+fn print_results_timed(
                     rule_loads: &RuleLoads,
                     matched_rules: &Vec<RuleResults>, 
                     unmatched_rules: &Vec<RuleResults>, 
@@ -47,11 +58,10 @@ fn print_results(
         rule_loads.clone()
     } else {
         let mut cloned = rule_loads.clone();
-        // Clear the errors field
         cloned.errors.clear();
         cloned
     };
-    let mut sigma_results = SigmaResults {
+    let mut sigma_results = SigmaResultsTimed {
         rule_load: rule_load.clone(),
         run_number: run_number + 1,
         time_taken_milli: total_duration.as_millis(),
@@ -61,6 +71,7 @@ fn print_results(
         unmatched_rules: if print_unmatched { unmatched_rules.clone() } else { Vec::new() }
     };
     sigma_results.matched_rules.sort_by_key(|rule| rule.rule_title.clone());
+    sigma_results.unmatched_rules.sort_by_key(|rule| rule.rule_title.clone());
     let mut _results: String = String::new();
     if pretty {
         _results = serde_json::to_string_pretty(&sigma_results).unwrap();
@@ -70,7 +81,7 @@ fn print_results(
     println!("{}", _results);
 }
 
-fn apply_sigma_rules(
+fn apply_sigma_rules_timed(
                         rule_loads: &RuleLoads,
                         log_entry: &Value, 
                         rules: &[Rule], 
@@ -83,7 +94,6 @@ fn apply_sigma_rules(
     let event = event_from_json(&log_entry.to_string()).unwrap();
     
     for i in 0..num_runs {
-        // Clear matched_rules at the start of each run
         let mut matched_rules = Vec::new();
         let mut unmatched_rules = Vec::new();
         let mut total_duration = Duration::new(0, 0);
@@ -106,7 +116,78 @@ fn apply_sigma_rules(
             }
         }
 
-        print_results(rule_loads, &matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched, print_errors);
+        print_results_timed(rule_loads, &matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched, print_errors);
+    }
+}
+
+fn print_results_untimed(
+                    rule_loads: &RuleLoads,
+                    matched_rules: &Vec<String>,
+                    unmatched_rules: &Vec<String>,
+                    total_duration: Duration, 
+                    run_number: i64, 
+                    pretty: bool,
+                    print_unmatched: bool,
+                    print_errors: bool,
+                ) 
+{
+    let rule_load = if print_errors {
+        rule_loads.clone()
+    } else {
+        let mut cloned = rule_loads.clone();
+        cloned.errors.clear();
+        cloned
+    };
+    let mut sigma_results = SigmaResultsUntimed {
+        rule_load: rule_load.clone(),
+        run_number: run_number + 1,
+        time_taken_milli: total_duration.as_millis(),
+        time_taken_micro: total_duration.as_micros(),
+        matched_rule_count: matched_rules.len(),
+        matched_rules: matched_rules.clone(),
+        unmatched_rules: if print_unmatched { unmatched_rules.clone() } else { Vec::new() }
+    };
+    sigma_results.matched_rules.sort();
+    sigma_results.unmatched_rules.sort();
+    let mut _results: String = String::new();
+    if pretty {
+        _results = serde_json::to_string_pretty(&sigma_results).unwrap();
+    } else {
+        _results = serde_json::to_string(&sigma_results).unwrap();
+    }
+    println!("{}", _results);
+}
+
+fn apply_sigma_rules_untimed(
+                        rule_loads: &RuleLoads,
+                        log_entry: &Value, 
+                        rules: &[Rule], 
+                        num_runs: i64, 
+                        pretty: bool, 
+                        print_unmatched: bool,
+                        print_errors: bool,
+                    ) 
+{
+    let event = event_from_json(&log_entry.to_string()).unwrap();
+    
+    for i in 0..num_runs {
+        let mut matched_rules = Vec::new();
+        let mut unmatched_rules = Vec::new();
+        let mut total_duration = Duration::new(0, 0);
+        for rule in rules {
+            let start = Instant::now();
+            if rule.is_match(&event) {
+                let duration = start.elapsed();
+                matched_rules.push(rule.title.clone());
+                total_duration += duration;
+            } else {
+                let duration = start.elapsed();
+                unmatched_rules.push(rule.title.clone());
+                total_duration += duration;
+            }
+        }
+
+        print_results_untimed(rule_loads, &matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched, print_errors);
     }
 }
 
@@ -173,16 +254,22 @@ fn main() -> io::Result<()>  {
         print_errors,
         pretty,
         print_unmatched,
+        timed,
     ) = get_args()?;
     let file = std::fs::File::open(log).unwrap(); 
     let reader = std::io::BufReader::new(file); 
     let log = serde_json::from_reader(reader).unwrap();
     let (rules, rule_loads) = load_rules(&rules).unwrap();
-    apply_sigma_rules(&rule_loads, &log, &rules, num_runs, pretty, print_unmatched, print_errors);
+    if timed {
+        apply_sigma_rules_timed(&rule_loads, &log, &rules, num_runs, pretty, print_unmatched, print_errors);
+    } else {
+        apply_sigma_rules_untimed(&rule_loads, &log, &rules, num_runs, pretty, print_unmatched, print_errors);
+    }
+    
     Ok(())
 }
 
-fn get_args() -> io::Result<(String, String, i64, bool, bool, bool)> {
+fn get_args() -> io::Result<(String, String, i64, bool, bool, bool, bool)> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 5 { print_help(); }
     let mut log_path = String::new();
@@ -194,14 +281,16 @@ fn get_args() -> io::Result<(String, String, i64, bool, bool, bool)> {
     let mut get_num_runs = false;
     let mut pretty = false;
     let mut print_unmatched = false;
+    let mut timed = false;
     for arg in args {
         match arg.as_str() {
             "-e" | "--errors" => print_errors = true,
             "-l" | "--log" => get_log = true,
             "-n" | "--number" => get_num_runs = true,
             "-p" | "--pretty" => pretty = true,
-            "-u" | "--unmatched" => print_unmatched = true,
             "-r" | "--rules" => get_rules = true,
+            "-t" | "--timed" => timed = true,
+            "-u" | "--unmatched" => print_unmatched = true,
             _ => {
                 if get_log {
                     log_path = arg.as_str().parse::<String>().unwrap();
@@ -222,7 +311,7 @@ fn get_args() -> io::Result<(String, String, i64, bool, bool, bool)> {
             }
         }
     }
-    Ok((log_path, rules_path, num_runs, print_errors, pretty, print_unmatched))
+    Ok((log_path, rules_path, num_runs, print_errors, pretty, print_unmatched, timed))
 }
 
 fn print_help() {
@@ -246,6 +335,7 @@ Options:
     -p, --pretty            Pretty print output
     -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
+    -t, --timed             Track time for a rule to evaulate the log
     -u, --unmatched         Include all unmatched rules in the output
 ";
     println!("{}", help);
