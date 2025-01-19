@@ -16,7 +16,7 @@ Usage:
     sigma_rule_tester --log './log.json' --rules './rules'
 
 Options:
-    -e, --errors            Print out all Sigma rule loading errors
+    -e, --errors            Print out all Sigma rule load errors
     -l, --log <location>    Test Json log
     -n, --number            Number of time to run the log through all rules
     -p, --pretty            Pretty print output

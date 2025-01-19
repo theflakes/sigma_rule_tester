@@ -11,8 +11,18 @@ struct RuleResults {
     time_taken_micro: u128,
 }
 
+#[derive(Debug, Default, Serialize, Clone)]
+struct RuleLoads {
+    total: i64,
+    successful: i64,
+    failed: i64,
+    load_time_milli: u128,
+    errors: Vec<String>,
+}
+
 #[derive(Debug, Default, Serialize)]
 struct SigmaResults {
+    rule_load: RuleLoads,
     run_number: i64,
     time_taken_milli: u128,
     time_taken_micro: u128,
@@ -23,15 +33,26 @@ struct SigmaResults {
 
 
 fn print_results(
+                    rule_loads: &RuleLoads,
                     matched_rules: &Vec<RuleResults>, 
                     unmatched_rules: &Vec<RuleResults>, 
                     total_duration: Duration, 
                     run_number: i64, 
                     pretty: bool,
                     print_unmatched: bool,
+                    print_errors: bool,
                 ) 
 {
+    let rule_load = if print_errors {
+        rule_loads.clone()
+    } else {
+        let mut cloned = rule_loads.clone();
+        // Clear the errors field
+        cloned.errors.clear();
+        cloned
+    };
     let mut sigma_results = SigmaResults {
+        rule_load: rule_load.clone(),
         run_number: run_number + 1,
         time_taken_milli: total_duration.as_millis(),
         time_taken_micro: total_duration.as_micros(),
@@ -50,11 +71,13 @@ fn print_results(
 }
 
 fn apply_sigma_rules(
+                        rule_loads: &RuleLoads,
                         log_entry: &Value, 
                         rules: &[Rule], 
                         num_runs: i64, 
                         pretty: bool, 
-                        print_unmatched: bool
+                        print_unmatched: bool,
+                        print_errors: bool,
                     ) 
 {
     let event = event_from_json(&log_entry.to_string()).unwrap();
@@ -83,46 +106,8 @@ fn apply_sigma_rules(
             }
         }
 
-        print_results(&matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched);
+        print_results(rule_loads, &matched_rules, &unmatched_rules, total_duration,i, pretty, print_unmatched, print_errors);
     }
-}
-
-fn print_rule_load_results(
-                            total: i32, 
-                            successful: i32, 
-                            failed: i32, 
-                            errors: &Vec<String>, 
-                            print_errors: bool, 
-                            duration: Duration
-                        ) 
-{
-    if print_errors {
-        println!(
-            "Rule Load Summary:\n\
-               - Total: {}\n\
-               - Successful: {}\n\
-               - Failed: {}\n\
-               - Load time: {:?}\n\
-               - Errors: {:?}",
-            total,
-            successful,
-            failed,
-            duration,
-            errors,
-        );
-        return
-    }
-    println!(
-        "Rule Load Summary:\n\
-           - Total: {}\n\
-           - Successful: {}\n\
-           - Failed: {}\n\
-           - Load time: {:?}",
-        total,
-        successful,
-        failed,
-        duration,
-    );
 }
 
 fn read_file_to_string(path: &std::path::Path) -> Result<String, String> {
@@ -134,7 +119,7 @@ fn read_file_to_string(path: &std::path::Path) -> Result<String, String> {
     Ok(contents)
 }
 
-fn load_rules(rules_dir: &str, print_errors: bool) -> Result<Vec<Rule>, String> {
+fn load_rules(rules_dir: &str) -> Result<(Vec<Rule>, RuleLoads), String> {
     let mut total = 0;
     let mut successful = 0;
     let mut failed = 0;
@@ -169,8 +154,15 @@ fn load_rules(rules_dir: &str, print_errors: bool) -> Result<Vec<Rule>, String> 
         }
     }
     let duration = start.elapsed();
-    print_rule_load_results(total, successful, failed, &errors, print_errors, duration);
-    Ok(rules)
+    let rule_loads = RuleLoads {
+        total,
+        successful,
+        failed,
+        load_time_milli: duration.as_millis(),
+        errors,
+    };
+    // print_rule_load_results(total, successful, failed, &errors, print_errors, duration);
+    Ok((rules, rule_loads))
 }
 
 fn main() -> io::Result<()>  {
@@ -185,8 +177,8 @@ fn main() -> io::Result<()>  {
     let file = std::fs::File::open(log).unwrap(); 
     let reader = std::io::BufReader::new(file); 
     let log = serde_json::from_reader(reader).unwrap();
-    let rules = load_rules(&rules, print_errors).unwrap();
-    apply_sigma_rules(&log, &rules, num_runs, pretty, print_unmatched);
+    let (rules, rule_loads) = load_rules(&rules).unwrap();
+    apply_sigma_rules(&rule_loads, &log, &rules, num_runs, pretty, print_unmatched, print_errors);
     Ok(())
 }
 
@@ -248,7 +240,7 @@ Usage:
     sigma_rule_tester --log './log.json' --rules './rules'
 
 Options:
-    -e, --errors            Print out all Sigma rule loading errors
+    -e, --errors            Print out all Sigma rule load errors
     -l, --log <location>    Test Json log
     -n, --number            Number of time to run the log through all rules
     -p, --pretty            Pretty print output
