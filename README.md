@@ -22,6 +22,7 @@ Options:
     -p, --pretty            Pretty print output
     -r, --rules <location>  Path to the directory containing your Sigma rules
                             - rules in sub directories will be used as well
+    -t, --timed             Track time for a rule to evaulate the log
     -u, --unmatched         Include all unmatched rules in the output
 ```
 Output
