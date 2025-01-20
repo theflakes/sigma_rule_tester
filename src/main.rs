@@ -1,4 +1,4 @@
-use std::{env, io::{self, Read}, process, time::{Duration, Instant}};
+use std::{env, fs::File, io::{self, BufReader, Read}, process, time::{Duration, Instant}};
 use serde::Serialize;
 use serde_json::Value;
 use sigma_rust::{Rule, rule_from_yaml, event_from_json};
@@ -263,6 +263,42 @@ fn load_rules(rules_dir: &str) -> Result<(Vec<Rule>, RuleLoads), String> {
     Ok((rules, rule_loads))
 }
 
+fn process_logs(
+                        timed: bool,
+                        logs: &Vec<Value>,
+                        rule_loads: &RuleLoads,
+                        rules: &[Rule], 
+                        num_runs: i64, 
+                        pretty: bool, 
+                        print_unmatched: bool,
+                        print_errors: bool,
+                    )  
+{
+    for log in logs {
+        if timed {
+            apply_sigma_rules_timed(
+                &rule_loads, 
+                log, 
+                &rules, 
+                num_runs, 
+                pretty, 
+                print_unmatched, 
+                print_errors
+            );
+        } else {
+            apply_sigma_rules_untimed(
+                &rule_loads, 
+                log, 
+                &rules, 
+                num_runs, 
+                pretty, 
+                print_unmatched, 
+                print_errors
+            );
+        }
+    }
+}
+
 fn main() -> io::Result<()>  {
     let (
         log, 
@@ -273,32 +309,24 @@ fn main() -> io::Result<()>  {
         print_unmatched,
         timed,
     ) = get_args()?;
-    let file = std::fs::File::open(log).unwrap(); 
-    let reader = std::io::BufReader::new(file); 
-    let log = serde_json::from_reader(reader).unwrap();
+    let file = File::open(log)?; 
+    let reader = BufReader::new(file); 
+    let entries: Value = serde_json::from_reader(reader).expect("Failed to parse JSON"); 
+    let logs: Vec<Value> = if entries.is_array() { 
+        serde_json::from_value(entries).expect("Failed to deserialize JSON as array of logs") 
+    } else { 
+        vec![serde_json::from_value(entries).expect("Failed to deserialize JSON as single log")]
+    };
     let (rules, rule_loads) = load_rules(&rules).unwrap();
-    if timed {
-        apply_sigma_rules_timed(
-            &rule_loads, 
-            &log, 
-            &rules, 
-            num_runs, 
-            pretty, 
-            print_unmatched, 
-            print_errors
-        );
-    } else {
-        apply_sigma_rules_untimed(
-            &rule_loads, 
-            &log, 
-            &rules, 
-            num_runs, 
-            pretty, 
-            print_unmatched, 
-            print_errors
-        );
-    }
-    
+    process_logs(
+        timed, 
+        &logs, 
+        &rule_loads, 
+        &rules, 
+        num_runs, 
+        pretty, 
+        print_unmatched, 
+        print_errors);
     Ok(())
 }
 
