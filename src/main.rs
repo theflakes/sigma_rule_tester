@@ -82,14 +82,14 @@ fn print_results_timed(
 }
 
 fn apply_sigma_rules_timed(
-                        rule_loads: &RuleLoads,
-                        log_entry: &Value, 
-                        rules: &[Rule], 
-                        num_runs: i64, 
-                        pretty: bool, 
-                        print_unmatched: bool,
-                        print_errors: bool,
-                    ) 
+                            rule_loads: &RuleLoads,
+                            log_entry: &Value, 
+                            rules: &[Rule], 
+                            num_runs: i64, 
+                            pretty: bool, 
+                            print_unmatched: bool,
+                            print_errors: bool,
+                        ) 
 {
     let event = event_from_json(&log_entry.to_string()).unwrap();
     
@@ -130,15 +130,15 @@ fn apply_sigma_rules_timed(
 }
 
 fn print_results_untimed(
-                    rule_loads: &RuleLoads,
-                    matched_rules: &Vec<String>,
-                    unmatched_rules: &Vec<String>,
-                    total_duration: Duration, 
-                    run_number: i64, 
-                    pretty: bool,
-                    print_unmatched: bool,
-                    print_errors: bool,
-                ) 
+                            rule_loads: &RuleLoads,
+                            matched_rules: &Vec<String>,
+                            unmatched_rules: &Vec<String>,
+                            total_duration: Duration, 
+                            run_number: i64, 
+                            pretty: bool,
+                            print_unmatched: bool,
+                            print_errors: bool,
+                        ) 
 {
     let rule_load = if print_errors {
         rule_loads.clone()
@@ -168,14 +168,14 @@ fn print_results_untimed(
 }
 
 fn apply_sigma_rules_untimed(
-                        rule_loads: &RuleLoads,
-                        log_entry: &Value, 
-                        rules: &[Rule], 
-                        num_runs: i64, 
-                        pretty: bool, 
-                        print_unmatched: bool,
-                        print_errors: bool,
-                    ) 
+                                rule_loads: &RuleLoads,
+                                log_entry: &Value, 
+                                rules: &[Rule], 
+                                num_runs: i64, 
+                                pretty: bool, 
+                                print_unmatched: bool,
+                                print_errors: bool,
+                            ) 
 {
     let event = event_from_json(&log_entry.to_string()).unwrap();
     
@@ -264,15 +264,15 @@ fn load_rules(rules_dir: &str) -> Result<(Vec<Rule>, RuleLoads), String> {
 }
 
 fn process_logs(
-                        timed: bool,
-                        logs: &Vec<Value>,
-                        rule_loads: &RuleLoads,
-                        rules: &[Rule], 
-                        num_runs: i64, 
-                        pretty: bool, 
-                        print_unmatched: bool,
-                        print_errors: bool,
-                    )  
+                timed: bool,
+                logs: &Vec<Value>,
+                rule_loads: &RuleLoads,
+                rules: &[Rule], 
+                num_runs: i64, 
+                pretty: bool, 
+                print_unmatched: bool,
+                print_errors: bool,
+            )  
 {
     for log in logs {
         if timed {
@@ -394,7 +394,7 @@ Purpose: Test Sigma rules against a Json log.
 Note: 
     When a rule uses simple glob matching, '*' and '?', the first time this
     logic is encountered it is converted into a regex and cached for quicker
-    execution of that logic on subsequent runs.
+    execution of that logic on subsequent logs its run against.
 
 Usage: 
     sigma_rule_tester --log './log.json' --rules './rules'
