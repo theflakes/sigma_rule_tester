@@ -1,7 +1,7 @@
 [package]
 name = "sigma_rule_tester"
 description = "Run Sigma rules against any json log."
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Brian Kellogg <theflakes@gmail.com>"]
 license = "MIT"
