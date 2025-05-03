@@ -2,6 +2,8 @@
 
 Test any number of rules against a Json log to see which rules fire.  
 
+Many thanks to Dr.-Ing. Johannes Pohl for his `sigma-rust` crate: https://github.com/jopohl/sigma-rust  
+
 ```
 Authors: Brian Kellogg
 License: MIT
