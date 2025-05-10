@@ -391,11 +391,6 @@ Authors: Brian Kellogg
 License: MIT
 Purpose: Test Sigma rules against a Json log.
 
-Note: 
-    When a rule uses simple glob matching, '*' and '?', the first time this
-    logic is encountered it is converted into a regex and cached for quicker
-    execution of that logic on subsequent logs its run against.
-
 Usage: 
     sigma_rule_tester --log './log.json' --rules './rules'
 
